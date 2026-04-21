@@ -68,7 +68,24 @@ vars = c("w1sq6_1", "w1sq6_2", "w1sq6_3", "w1sq6_4", "agegroup35", "w1sq11_1",
 
 df = df %>%
   mutate(across(all_of(vars), ~ factor(.)))
-
+# rename variables
+df_better <- df %>%
+  rename(
+    timetojob = w3sq69b,
+    during_studies_abroad_studies = w1sq6_1,
+    during_studies_abroad_work = w1sq6_2,
+    during_studies_abroad_langcourse = w1sq6_3,
+    during_studies_abroad_summerschool = w1sq6_4,
+    workimportance_subj = w4sq1, # higher = not important
+    apprent_unpaid = w1sq11_1,
+    apprent_paid = w1sq11_2,
+    intern_unpaid = w1sq11_3,
+    intern_paid = w1sq11_4,
+    psych_12month = w1hq8,
+    mental_health_subj = w3hq57, # higher = bad
+    inheritance = w4eq10
+  )
+#
 # Model ----
 #' EDUCATION
 #' w1sq6_1 - Done during studies: Studied abroad
@@ -95,78 +112,6 @@ df = df %>%
 #' FINANCIAL SITUATION (equal pillar)
 #' w4eq10 - Expect to receive substantial inheritance in future --> indicator for financial situation in childhood
 
-df_better <- df %>%
-  rename(
-    timetojob = w3sq69b,
-    during_studies_abroad_studies = w1sq6_1,
-    during_studies_abroad_work = w1sq6_2,
-    during_studies_abroad_langcourse = w1sq6_3,
-    during_studies_abroad_summerschool = w1sq6_4,
-    workimportance_subj = w4sq1, # higher = not important
-    apprent_unpaid = w1sq11_1,
-    apprent_paid = w1sq11_2,
-    intern_unpaid = w1sq11_3,
-    intern_paid = w1sq11_4,
-    psych_12month = w1hq8,
-    mental_health_subj = w3hq57, # higher = bad
-    inheritance = w4eq10
-  )
-## continuous outcome ----
-# contrasts(df$cntry) = contr.treatment(nlevels(df$cntry)) # --> austria is reference category
-# df$cntry = relevel(df$cntry, ref = "FR")  # France is reference category
-contrasts(df$cntry) = contr.sum # --> deviation (sum-to-zero) coding (diff to overall mean)
-model_cont = lm(w3sq69b ~ cntry + agegroup35 + #yrbrn0 +
-     # Done during studies
-     w1sq6_1 + w1sq6_2 + w1sq6_3 + w1sq6_4 +
-     # Ever participated in apprenticeship or internship
-     w1sq11_1 + w1sq11_2 + w1sq11_3 + w1sq11_4 +
-     # mental health
-     w1hq8 + w3hq57 +
-     # Expect to receive substantial inheritance in future
-     w4eq10, data = df
-     ) #+ w1sq7_1 +w1sq7_2+w1sq7_3 +
-summary(model_cont)
-
-model_cont_35 = lm(w3sq69b ~ cntry +
-     # Done during studies
-     w1sq6_1 + w1sq6_2 + w1sq6_3 + w1sq6_4 +
-     # Ever participated in apprenticeship or internship
-     w1sq11_1 + w1sq11_2 + w1sq11_3 + w1sq11_4 +
-     # mental health
-     w1hq8 + w3hq57 +
-     # Expect to receive substantial inheritance in future
-     w4eq10, data = df[df$agegroup35 == 1,]
-     ) #+ w1sq7_1 +w1sq7_2+w1sq7_3 +
-summary(model_cont_35)
-
-## categorical outcome ----
-df$w3sq69b_fac = factor(df$w3sq69b,
-                      levels = c(1, 2, 3, 4),
-                      labels = c("<1 month", "1–6 months", "6–12 months", ">1 year"),
-                      ordered = TRUE)
-model_cat = polr(w3sq69b_fac ~ cntry +
-     # Done during studies
-     w1sq6_1 + w1sq6_2 + w1sq6_3 + w1sq6_4 +
-     # Ever participated in apprenticeship or internship
-     w1sq11_1 + w1sq11_2 + w1sq11_3 + w1sq11_4 +
-     # mental health
-     w1hq8 + w3hq57 +
-     # Expect to receive substantial inheritance in future
-     w4eq10, data = df, Hess = TRUE)
-
-summary(model_cat)
-coefs = summary(model_cat)$coefficients
-
-p_values = 2 * pnorm(abs(coefs[, "t value"]), lower.tail = FALSE)
-
-cbind(coefs, p_value = p_values)
-p_values < 0.01
-
-coef_values = coefficients(model_cat)
-coef_values_all = c(coef_values[1:10], -1* sum(coef_values[1:10]), coef_values[11:24])
-names(coef_values_all)[1:11]  = paste0("cntry", levels(df$cntry))
-OR = exp(coef_values_all)
-print(OR)
 
 
 ## continuous outcome ----
@@ -216,13 +161,12 @@ model_cat = polr(timetojob_fac ~ cntry +
                   during_studies_abroad_langcourse +
                   during_studies_abroad_summerschool +
                   workimportance_subj +
-                  apprent_unpaid +
-                  apprent_paid +
-                  intern_unpaid +
-                  intern_paid +
+                  apprent_unpaid * inheritance+
+                  apprent_paid * inheritance+
+                  intern_unpaid * inheritance+
+                  intern_paid * inheritance +
                   psych_12month +
-                  mental_health_subj +
-                  inheritance, data = df_better, Hess = TRUE)
+                  mental_health_subj, data = df_better, Hess = TRUE)
 
 summary(model_cat)
 coefs = summary(model_cat)$coefficients
@@ -233,12 +177,17 @@ cbind(coefs, p_value = p_values)
 p_values < 0.01
 
 coef_values = coefficients(model_cat)
-coef_values_all = c(coef_values[1:10], -1* sum(coef_values[1:10]), coef_values[11:24])
+coef_values_all = c(coef_values[1:10], -1* sum(coef_values[1:10]), coef_values[11:length(coef_values)])
 names(coef_values_all)[1:11]  = paste0("cntry", levels(df$cntry))
 OR = exp(coef_values_all)
 print(OR)
 
-
+# Intepretation:
+# internships and apprenticeships are more strongly associated with faster job entry among individuals without expected inheritance, while these effects are weaker among those with stronger financial security.”
+# inheritance buffers the disadvantage of unpaid internships and apprenticeship in timing to employment
+# 1.Inheritance expectation → slower labour market entry: people with financial safety are less pressured to transition quickly
+# 2. Work experience matters less when financial safety is high: apprenticeship/internship effects are context-dependent
+# 3. Strongest pattern:  Labour market integration mechanisms (internships/apprenticeships) are more important for those without financial safety nets.
 # IDEEN:
 #' in das modell:
 #' w4sq1 - Importance of work in life --> einschätzung, ist es den leuten überhaupt wichtig?? --> das ist ein confounder (?)
