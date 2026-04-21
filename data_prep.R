@@ -330,18 +330,19 @@ newdata <- expand.grid(
   psych_12month = levels(df_better$psych_12month)[1],
   inheritance = levels(df_better$inheritance)[1],
 
-  workimportance_subj = levels(df_better$workimportance_subj)[1]
+  workimportance_subj = mean(df_better$workimportance_subj, na.rm = TRUE)
 )
 
 # predicted probabilities
 pred <- predict(model_cat, newdata = newdata, type = "probs")
 plot_data <- cbind(newdata, pred) %>%
-  mutate(prob_fast = `1`) %>%   # category 1 = fastest job entry
-  select(cntry, mental_health_subj, prob_fast)
+  mutate(prob_fast = `<1 month`) %>%   # category 1 = fastest job entry
+  dplyr::select(cntry, mental_health_subj, prob_fast)
 
 ggplot(plot_data, aes(
   x = mental_health_subj,
   y = prob_fast,
+  group = cntry,
   color = cntry
 )) +
   geom_line() +
