@@ -1,4 +1,4 @@
-The report was created by compiling report_titlepage.Rmd and report.Rmd separately, and were then joined together. 
+The report was created by compiling report_titlepage.Rmd and report.Rmd separately. The PDF documents were then joined together. 
 
 Data from waves 1 to 4 from the CRONOS-3 survey (ESS ERIC, 2025a, 2025b, 2025c, 2026) were used. The data is contained in the "CRONOS-3 Theme - Make it Equal", "CRONOS-3 Theme - Make it Healthy", and "CRONOS-3 Theme - Make it Equal" folders.
 
