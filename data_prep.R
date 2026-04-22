@@ -34,12 +34,12 @@ length(intersect(df_equal$idunique, df_healthy$idunique))
 common_cols = colnames(df_strong)[1:24]
 
 # merge datasets
-df <- df_strong %>%
+df = df_strong %>%
   left_join(df_equal[, c("idunique", "w4eq10")], by = "idunique") %>%
   left_join(df_healthy[, c("idunique", "w1hq8", "w3hq57")], by = "idunique")
 
 # rename variables
-df <- df %>%
+df = df %>%
   rename(
     timetojob = w3sq69b,
     during_studies_abroad_studies = w1sq6_1,
@@ -53,34 +53,43 @@ df <- df %>%
     intern_paid = w1sq11_4,
     psych_12month = w1hq8,
     mental_health_subj = w3hq57, # higher = bad
-    inheritance = w4eq10
+    inheritance = w4eq10,
+    highested = eisced,
+    bornincntry = w2sq18a,
+    obstacle_firstjob = w3sq71
   )
 
 # filter valid outcome
-df <- df[df$timetojob %in% 1:4, ]
+df = df[df$timetojob %in% 1:4, ]
 
 # clean age
-df <- df[df$age < 100, ]
+df = df[df$age < 100, ]
 
 # birth year transformation
-df$yrbrn0 <- df$yrbrn - min(df$yrbrn, na.rm = TRUE)
+df$yrbrn0 = df$yrbrn - min(df$yrbrn, na.rm = TRUE)
 
 # recode psych_12month
-df$psych_12month[df$psych_12month %in% c(1,2)] <- 1
-df$psych_12month[df$psych_12month == 3] <- 0
-df$psych_12month[df$psych_12month == 9] <- NA
+df$psych_12month[df$psych_12month %in% c(1,2)] = 1
+df$psych_12month[df$psych_12month == 3] = 0
+df$psych_12month[df$psych_12month == 9] = NA
 
 # other missing recodes
-df[df$agegroup35 == 9, "agegroup35"] <- NA
-df$mental_health_subj[df$mental_health_subj == 9] <- NA
-df$workimportance_subj[df$workimportance_subj == 9] <- NA
+df[df$agegroup35 == 9, "agegroup35"] = NA
+df$mental_health_subj[df$mental_health_subj == 9] = NA
+df$workimportance_subj[df$workimportance_subj == 9] = NA
+df$eduyrs[df$eduyrs >= 77] = NA
+df$highested[df$highested >= 55] = NA
+
+# recode bornincntry
+df$bornincntry[df$bornincntry == 2] = 0
+df$bornincntry[df$bornincntry == 9] = NA
 
 # recode inheritance
-df$inheritance[df$inheritance == 2] <- 0
-df$inheritance[df$inheritance == 9] <- NA
+df$inheritance[df$inheritance == 2] = 0
+df$inheritance[df$inheritance == 9] = NA
 
 # variables to convert to factor
-vars <- c(
+vars = c(
   "during_studies_abroad_studies",
   "during_studies_abroad_work",
   "during_studies_abroad_langcourse",
@@ -93,10 +102,13 @@ vars <- c(
   "inheritance",
   "psych_12month",
   "mental_health_subj",
-  "cntry"
+  "cntry",
+  "bornincntry",
+  "highested",
+  "obstacle_firstjob"
 )
 
-df <- df %>%
+df = df %>%
   mutate(across(all_of(vars), ~ factor(.)))
 
 # overview
@@ -113,18 +125,16 @@ summary(df[, c("during_studies_abroad_studies", "during_studies_abroad_work",
 #' w1sq6_3 - Done during studies: Attended language course abroad --> during_studies_abroad_langcourse
 #' w1sq6_4 - Done during studies: Summer school, workshop or similar activity abroad --> during_studies_abroad_summerschool
 #'
-#' w1sq7_1 - Stay abroad supported by mobility programme: Yes, by EU programme (e.g. Erasmus)
-#' w1sq7_2 - Stay abroad supported by mobility programme: Yes, by national programme
-#' w1sq7_3 - Stay abroad supported by mobility programme: Yes, by another programme
-#'
 #' w1sq11_1 - Ever participated in apprenticeship or internship: Yes, in unpaid apprenticeship --> apprent_unpaid
 #' w1sq11_2 - Ever participated in apprenticeship or internship: Yes, in paid apprenticeship
 #' w1sq11_3 - Ever participated in apprenticeship or internship: Yes, in unpaid internship
 #' w1sq11_4 - Ever participated in apprenticeship or internship: Yes, in paid internship
 #'
-#'
+#' eduyrs - Years of full-time education completed
+#' w2sq18a - Respondent born in country --> indicator for migration backround
 #' w4sq1 - Importance of work in life
-
+#' w3sq71 - Main obstacle in finding first job
+#'
 #' MENTAL HEALTH (healthy pillar)
 #' w1hq8 - Needed to see psychologist, psychiatrist or other mental health services specialist last 12 months --> "healthy pillar"
 #' w3hq57 - Subjective mental health in general
@@ -175,7 +185,7 @@ df$timetojob_fac = factor(df$timetojob,
                       levels = c(1, 2, 3, 4),
                       labels = c("<1 month", "1–6 months", "6–12 months", ">1 year"),
                       ordered = TRUE)
-model_cat = polr(timetojob_fac ~ cntry +
+model_cat = polr(timetojob_fac ~ cntry + yrbrn0 +
                   during_studies_abroad_studies +
                   during_studies_abroad_work +
                   during_studies_abroad_langcourse +
@@ -185,7 +195,7 @@ model_cat = polr(timetojob_fac ~ cntry +
                   apprent_paid * inheritance+
                   intern_unpaid * inheritance+
                   intern_paid * inheritance +
-                  psych_12month +
+                  eduyrs + bornincntry +
                   mental_health_subj, data = df, Hess = TRUE)
 
 summary(model_cat)
@@ -193,8 +203,7 @@ coefs = summary(model_cat)$coefficients
 
 p_values = 2 * pnorm(abs(coefs[, "t value"]), lower.tail = FALSE)
 
-cbind(coefs, p_value = p_values)
-p_values < 0.01
+cbind(exp(coefs[,1]), p_value = p_values, "<0.01" = p_values < 0.01, "<0.05" = p_values < 0.05)
 
 coef_values = coefficients(model_cat)
 coef_values_all = c(coef_values[1:10], -1* sum(coef_values[1:10]), coef_values[11:length(coef_values)])
@@ -224,7 +233,7 @@ print(OR)
 
 
 ## categorical outcome simplified----
-df <- df %>%
+df = df %>%
   mutate(
     study_abroad = case_when(
       w1sq6_6 == 1 ~ NA_real_,
@@ -321,13 +330,13 @@ ggplot(df_plot, aes(x = age, y = prop, color = factor(w3sq69b))) +
 ## timetojob, country, mental health ----
 library(tidyr)
 
-df$timetojob <- factor(
+df$timetojob = factor(
   df$timetojob,
   ordered = TRUE
 )
 
 # prediction grid varyiing country and mental health
-newdata <- expand.grid(
+newdata = expand.grid(
   cntry = levels(df$cntry),
   mental_health_subj = sort(unique(df$mental_health_subj)),
 
@@ -348,8 +357,8 @@ newdata <- expand.grid(
 )
 
 # predicted probabilities
-pred <- predict(model_cat, newdata = newdata, type = "probs")
-plot_data <- cbind(newdata, pred) %>%
+pred = predict(model_cat, newdata = newdata, type = "probs")
+plot_data = cbind(newdata, pred) %>%
   mutate(prob_fast = `<1 month`) %>%   # category 1 = fastest job entry
   dplyr::select(cntry, mental_health_subj, prob_fast)
 

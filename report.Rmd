@@ -10,7 +10,7 @@ output:
     number_sections: true
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
@@ -80,7 +80,7 @@ Input:
 \end{itemize}
 
 
-```{r dataprep, include=FALSE}
+```{r dataprep, include=FALSE, message=FALSE}
 # Data ----
 ## load pillars ----
 df_strong = read.csv(file="CRONOS-3 Theme - Make it Strong/CRONOS-3 Theme - Make it Strong.csv")
@@ -199,7 +199,7 @@ summary(df[, c("during_studies_abroad_studies", "during_studies_abroad_work",
 
 ```
 Odds ratio per variable for an ordinal logistic regression model:
-```{r modelfitting, echo=FALSE}
+```{r modelfitting, echo=FALSE, message=FALSE}
 # contrasts(df$cntry) = contr.treatment(nlevels(df$cntry)) # --> austria is reference category
 # df$cntry = relevel(df$cntry, ref = "FR")  # France is reference category
 contrasts(df$cntry) = contr.sum # --> deviation (sum-to-zero) coding (diff to overall mean)
@@ -413,8 +413,7 @@ This suggests that structural differences between national labour markets play a
 Other countries (e.g., Belgium, Czech Republic, United Kingdom, Hungary) do not show statistically significant differences. \newline
 The differences between the different countries also become very apparent when looking at the following plot.
 
-```{r plot1, echo=FALSE}
-round(prop.table(table(df$timetojob_fac, df$cntry), margin = 2), 2)
+```{r plot1, echo=FALSE, message=FALSE}
 tab = prop.table(table(df$timetojob_fac, df$cntry), margin = 2)
 
 df_plot = as.data.frame(tab)
@@ -429,7 +428,7 @@ ggplot(df_plot, aes(x = country, y = prop, fill = factor(response))) +
   geom_bar(stat = "identity") +
   labs(x = "Country",
        y = "Proportion",
-       fill = "Response category") +
+       fill = "Time to First Job") +
   scale_y_continuous(labels = percent) +
   theme_minimal() +
   theme(
@@ -446,40 +445,58 @@ The results indicate that different types of experiences during studies have **v
 \end{itemize}
 These findings suggest that practical work experience **abroad may be more valuable** for labour market integration than purely academic or short-term activities.
 
-```{r plot2, echo=FALSE}
+```{r plot2, echo=FALSE, message=FALSE}
 edu_vars <- c(
   "during_studies_abroad_studies",
   "during_studies_abroad_work",
   "during_studies_abroad_langcourse",
   "during_studies_abroad_summerschool",
-  "timetojob"
+  "timetojob_fac"
 )
 
 df_edu_plot <- df %>%
   dplyr::select(all_of(edu_vars)) %>%
-  pivot_longer(cols = everything(),
-               names_to = "experience",
-               values_to = "response")
+  mutate(
+    any_abroad = ifelse(
+      during_studies_abroad_studies == 0 &
+      during_studies_abroad_work == 0 &
+      during_studies_abroad_langcourse == 0 &
+      during_studies_abroad_summerschool == 0,
+      1, 0
+    )
+  ) %>%
+  mutate(any_abroad = factor(any_abroad)) %>% 
+  pivot_longer(cols = c("during_studies_abroad_studies",
+                        "during_studies_abroad_work",
+                        "during_studies_abroad_langcourse",
+                        "during_studies_abroad_summerschool",
+                        "any_abroad"),
+               names_to = "activity",
+               values_to = "did_activity")
 
-df_edu_plot$experience <- factor(df_edu_plot$experience,
-  levels = edu_vars,
+df_edu_plot = df_edu_plot[df_edu_plot$did_activity == 1,]
+
+tab = prop.table(table(df_edu_plot$timetojob_fac, df_edu_plot$activity), margin = 2)
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "experience", "prop")
+
+df_plot$experience <- factor(df_plot$experience,
+  levels = c("during_studies_abroad_studies",
+             "during_studies_abroad_work",
+             "during_studies_abroad_langcourse",
+             "during_studies_abroad_summerschool",
+             "any_abroad"),
   labels = c("Studied abroad",
              "Work/internship abroad",
              "Language course abroad",
-             "Summer school/workshop abroad")
+             "Summer school/workshop abroad",
+             "None")
 )
-
-df_edu_plot <- df_edu_plot %>%
-  group_by(experience, response) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(experience) %>%
-  mutate(prop = n / sum(n))
-
-ggplot(df_edu_plot, aes(x = experience, y = prop, fill = factor(response))) +
+ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
   geom_bar(stat = "identity") +
-  labs(x = "Education and study-related experiences",
+  labs(x = "Abroad Experience",
        y = "Proportion",
-       fill = "Response category") +
+       fill = "Time to First Job") +
   scale_y_continuous(labels = percent) +
   theme_minimal() +
   theme(
@@ -498,8 +515,68 @@ Work experience plays an important but nuanced role:
 \end{itemize}
 
 This indicates that **apprenticeships are particularly effective** in facilitating labour market entry, while internships appear less consistently beneficial.
-```{r plot3, echo=FALSE}
+
+
+```{r plot3, echo=FALSE, message=FALSE}
+edu_vars <- c(
+  "apprent_paid",
+  "apprent_unpaid",
+  "intern_paid",
+  "intern_unpaid",
+  "timetojob_fac"
+)
+
+df_edu_plot <- df %>%
+  dplyr::select(all_of(edu_vars)) %>%
+  mutate(
+    any_abroad = ifelse(
+      apprent_paid == 0 &
+      apprent_unpaid == 0 &
+      intern_paid == 0 &
+      intern_unpaid == 0,
+      1, 0
+    )
+  ) %>%
+  mutate(any_abroad = factor(any_abroad)) %>% 
+  pivot_longer(cols = c("apprent_paid",
+                        "apprent_unpaid",
+                        "intern_paid",
+                        "intern_unpaid",
+                        "any_abroad"),
+               names_to = "activity",
+               values_to = "did_activity")
+
+df_edu_plot = df_edu_plot[df_edu_plot$did_activity == 1,]
+
+
+tab = prop.table(table(df_edu_plot$timetojob_fac, df_edu_plot$activity), margin = 2)
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "experience", "prop")
+
+df_plot$experience <- factor(df_plot$experience,
+  levels = c("apprent_paid",
+             "apprent_unpaid",
+             "intern_paid",
+             "intern_unpaid",
+             "any_abroad"),
+  labels = c("Paid Apprenticeship",
+             "Unpaid Apprenticeship",
+             "Paid Internship",
+             "Unpaid Internship",
+             "Neither")
+)
+ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Apprenticeships and internships",
+       y = "Proportion",
+       fill = "Time to First Job") +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 ```
+
 
 ## Socioeconomic background
 
@@ -510,9 +587,35 @@ However, another important factor is:
 \item Being born in the country is associated with substantially faster job entry (OR $=$ 0.56, p $<$ 0.01).
 \end{itemize}
 This suggests that structural advantages, such as familiarity with the local labour market or fewer barriers, play a key role. This implies that, people **not born in the country**, such as immigrants, have **more difficulty entering the labour market quickly**.
-```{r plot4, echo=FALSE}
 
+
+```{r plot4, echo=FALSE, message=FALSE}
+edu_vars <- c(
+  "bornincntry",
+  "timetojob_fac"
+)
+
+df_edu_plot <- df %>%
+  dplyr::select(all_of(edu_vars)) 
+
+
+tab = prop.table(table(df_edu_plot$timetojob_fac, df_edu_plot$bornincntry), margin = 2)
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "bornincntry", "prop")
+
+df_plot$bornincntry <- factor(df_plot$bornincntry,
+  levels = c(1, 0),
+  labels = c("Yes", "No")
+)
+ggplot(df_plot, aes(x = bornincntry, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Born in Country",
+       y = "Proportion",
+       fill = "Time to First Job") +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() 
 ```
+
 ## Mental health
 
 Mental health shows one of the **strongest and most consistent patterns** in the model. \newline
@@ -525,8 +628,42 @@ Compared to individuals with very good mental health:
 \end{itemize}
 
 This indicates a clear gradient effect, where **worsening mental health** is strongly linked to **increasing difficulty in entering employment**.
-```{r plot5, echo=FALSE}
+
+
+```{r plot5, echo=FALSE, message=FALSE}
+edu_vars <- c(
+  "mental_health_subj",
+  "timetojob_fac"
+)
+
+df_edu_plot <- df %>%
+  dplyr::select(all_of(edu_vars)) 
+
+tab = prop.table(table(df_edu_plot$timetojob_fac, df_edu_plot$mental_health_subj), margin = 2)
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "mental", "prop")
+
+df_plot$experience <- factor(df_plot$mental,
+  levels = c(1:5),
+  labels = c("Very good",
+             "Good",
+             "Fair",
+             "Bad",
+             "Very bad")
+)
+ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Mental Health",
+       y = "Proportion",
+       fill = "Time to First Job") +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 ```
+
+
 ## Other individual characteristics
 \begin{itemize}
 \item Age (year of birth): Younger individuals tend to experience slightly longer transitions (OR $=$ 1.02, p $<$ 0.01), indicating that the job search has become more difficult throughout time.
@@ -534,8 +671,33 @@ This indicates a clear gradient effect, where **worsening mental health** is str
 \item Importance of work: No significant effect.
 \end{itemize}
 
-```{r plot6, echo=FALSE}
+```{r plot6, echo=FALSE, message=FALSE}
+df$age_group = cut(df$age,
+                    breaks = c(15, 20, 25, 30, 35, 40),
+                    labels = c("15–20", "21–25", "26–30", "31–35", "36–40"))
+
+tab = prop.table(table(df$timetojob_fac, df$age_group), margin = 2)
+
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "age_group", "prop")
+ggplot(df_plot, aes(x = age_group, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Age group", y = "Proportion", fill = "Response") +
+  theme_minimal()
+
+df_plot = df %>%
+  group_by(age, timetojob_fac) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(age) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(df_plot, aes(x = age, y = prop, color = timetojob_fac)) +
+  labs(x = "Age", y = "Proportion", color = "Response") +
+  theme_minimal() + geom_smooth(se = FALSE) # + geom_line()
+
 ```
+
 # Policy Implications and Recommandations
 
 This analysis shows that the transition from education to employment is shaped not only by individual choices, but by structural factors such as labour market institutions, access to work experience, and mental health.
