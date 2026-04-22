@@ -1,0 +1,560 @@
+---
+title: 'Education to Work Transition: What Really Helps Young People Get Their First
+  Job?'
+author: "Elisa Noltenius"
+date: "2026-04-22"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 1
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(MASS)
+library(knitr)
+library(kableExtra)
+library(scales)
+library(tidyr)
+```
+
+# Problem Description and Research Question
+
+\textbf{Target audience}: Government and policy makers working on youth employment \newline
+
+Why do some young people find a job quickly after completing their education, while others take months or even years to enter the labour market? \newline
+
+A faster transition into employment is not only beneficial for individuals, but also for society as a whole. Early labour market integration means:
+\begin{itemize}
+\item quicker economic contribution
+\item higher productivity and value creation
+\item reduced risk of long-term unemployment
+\end{itemize}
+However, these transitions are not equally distributed. Differences may arise from individual characteristics, access to work experience, mental health, or broader structural conditions such as national labour market systems.
+
+\textbf{Research question:}
+
+> What factors determine how quickly young people enter the labour market after completing their education?
+
+To answer this question, an ordinal regression model was estimated using data from the CRONOS-3 survey, focusing on the duration of active job search until the first employment.
+
+# Model
+
+Outcome: Time to first job after active search (\textit{w3sq69b}) \newline
+Input:
+\begin{itemize}
+\item Birth year (\textit{yrbrn})
+\item Country (\textit{cntry})
+\item Gender (\textit{gender})
+\item Strong Pillar:
+\begin{itemize}
+\item Years of full-time education completed (\textit{eduyrs})
+\item Respondent born in country $\rightarrow$ indicator for migration backround (\textit{w2sq18a})
+\item Importance of work in life (\textit{w4sq1}: 1$=$Essential, 2$=$Very important, 3$=$Fairly important, 4$=$Not very important, 5$=$Not important at all)
+\item Done during studies (\textit{w1sq6\_1} - \textit{w1sq6\_4}: 1$=$Yes, 0$=$No):
+\begin{itemize}
+\item Studied abroad
+\item Internship or work placement abroad
+\item Attended language course abroad
+\item Summer school, workshop or similar activity abroad
+\end{itemize}
+\item Apprentice or Internship (\textit{w1sq11\_1}-\textit{w1sq11\_4}: 1$=$Yes, 0$=$No):
+\begin{itemize}
+\item Participated in unpaid apprenticeship
+\item Participated in paid apprenticeship
+\item Participated in unpaid internship
+\item Participated in paid internship
+\end{itemize}
+\end{itemize}
+\item Health Pillar:
+\begin{itemize}
+\item Subjective mental health in general (\textit{w3hq57}: 1$=$Very good, 2$=$Good, 3$=$Fair, 4$=$Bad, 5$=$Very bad)
+\end{itemize}
+\item Equal Pillar:
+\begin{itemize}
+\item Expect to receive substantial inheritance in future $\rightarrow$ indicator for socioeconomic background (\textit{w4eq10})
+\end{itemize}
+\end{itemize}
+
+
+```{r dataprep, include=FALSE}
+# Data ----
+## load pillars ----
+df_strong = read.csv(file="CRONOS-3 Theme - Make it Strong/CRONOS-3 Theme - Make it Strong.csv")
+df_strong$idunique = paste0(df_strong$idno, "_", df_strong$yrbrn, "_", df_strong$cntry)
+df_strong = df_strong[, c("idunique", setdiff(names(df_strong), "idunique"))]
+non_unique_ids = names(which(table(df_strong$idunique)>1))
+nrow(df_strong[df_strong$idunique %in% non_unique_ids,]) # --> not the same people
+# View(df_strong)
+
+df_equal = read.csv(file="CRONOS-3 Theme - Make it Equal/CRONOS-3 Theme - Make it Equal.csv")
+df_equal$idunique = paste0(df_equal$idno, "_", df_equal$yrbrn, "_", df_equal$cntry)
+df_equal = df_equal[, c("idunique", setdiff(names(df_equal), "idunique"))]
+non_unique_ids = names(which(table(df_equal$idunique)>1))
+nrow(df_equal[df_equal$idunique %in% non_unique_ids,]) # --> not the same people
+# View(df_equal)
+
+df_healthy = read.csv(file="CRONOS-3 Theme - Make it Healthy/CRONOS-3 Theme - Make it Healthy.csv")
+df_healthy$idunique = paste0(df_healthy$idno, "_", df_healthy$yrbrn, "_", df_healthy$cntry)
+df_healthy = df_healthy[, c("idunique", setdiff(names(df_healthy), "idunique"))]
+non_unique_ids = names(which(table(df_healthy$idunique)>1))
+nrow(df_healthy[df_healthy$idunique %in% non_unique_ids,]) # --> not the same people
+# View(df_healthy)
+
+## merge data ----
+length(intersect(df_strong$idunique, df_equal$idunique))
+length(intersect(df_strong$idunique, df_healthy$idunique))
+length(intersect(df_equal$idunique, df_healthy$idunique))
+
+## all the same participants
+common_cols = colnames(df_strong)[1:24]
+
+# merge datasets
+df = df_strong %>%
+  left_join(df_equal[, c("idunique", "w4eq10")], by = "idunique") %>%
+  left_join(df_healthy[, c("idunique", "w1hq8", "w3hq57")], by = "idunique")
+
+# rename variables
+df = df %>%
+  rename(
+    timetojob = w3sq69b,
+    during_studies_abroad_studies = w1sq6_1,
+    during_studies_abroad_work = w1sq6_2,
+    during_studies_abroad_langcourse = w1sq6_3,
+    during_studies_abroad_summerschool = w1sq6_4,
+    workimportance_subj = w4sq1, # higher = not important
+    apprent_unpaid = w1sq11_1,
+    apprent_paid = w1sq11_2,
+    intern_unpaid = w1sq11_3,
+    intern_paid = w1sq11_4,
+    psych_12month = w1hq8,
+    mental_health_subj = w3hq57, # higher = bad
+    inheritance = w4eq10,
+    highested = eisced,
+    bornincntry = w2sq18a,
+    obstacle_firstjob = w3sq71
+  )
+
+# filter valid outcome
+df = df[df$timetojob %in% 1:4, ]
+
+# clean age
+df = df[df$age < 100, ]
+
+# birth year transformation
+df$yrbrn0 = df$yrbrn - min(df$yrbrn, na.rm = TRUE)
+
+# recode psych_12month
+df$psych_12month[df$psych_12month %in% c(1,2)] = 1
+df$psych_12month[df$psych_12month == 3] = 0
+df$psych_12month[df$psych_12month == 9] = NA
+
+# other missing recodes
+df[df$agegroup35 == 9, "agegroup35"] = NA
+df$mental_health_subj[df$mental_health_subj == 9] = NA
+df$workimportance_subj[df$workimportance_subj == 9] = NA
+df$eduyrs[df$eduyrs >= 77] = NA
+df$highested[df$highested >= 55] = NA
+
+# recode bornincntry
+df$bornincntry[df$bornincntry == 2] = 0
+df$bornincntry[df$bornincntry == 9] = NA
+
+# recode inheritance
+df$inheritance[df$inheritance == 2] = 0
+df$inheritance[df$inheritance == 9] = NA
+
+# variables to convert to factor
+vars = c(
+  "during_studies_abroad_studies",
+  "during_studies_abroad_work",
+  "during_studies_abroad_langcourse",
+  "during_studies_abroad_summerschool",
+  "agegroup35",
+  "apprent_unpaid",
+  "apprent_paid",
+  "intern_unpaid",
+  "intern_paid",
+  "inheritance",
+  "psych_12month",
+  "mental_health_subj",
+  "cntry",
+  "bornincntry",
+  "highested",
+  "obstacle_firstjob"
+)
+
+df = df %>%
+  mutate(across(all_of(vars), ~ factor(.)))
+
+# overview
+summary(df[, c("during_studies_abroad_studies", "during_studies_abroad_work",
+               "during_studies_abroad_langcourse", "during_studies_abroad_summerschool",
+               "agegroup35", "apprent_unpaid", "apprent_paid",
+               "intern_unpaid", "intern_paid", "inheritance", "psych_12month",
+               "mental_health_subj")])
+
+```
+Odds ratio per variable for an ordinal logistic regression model:
+```{r modelfitting, echo=FALSE}
+# contrasts(df$cntry) = contr.treatment(nlevels(df$cntry)) # --> austria is reference category
+# df$cntry = relevel(df$cntry, ref = "FR")  # France is reference category
+contrasts(df$cntry) = contr.sum # --> deviation (sum-to-zero) coding (diff to overall mean)
+df$timetojob_fac = factor(df$timetojob,
+                      levels = c(1, 2, 3, 4),
+                      labels = c("<1 month", "1–6 months", "6–12 months", ">1 year"),
+                      ordered = TRUE)
+model_cat = polr(timetojob_fac ~ cntry + yrbrn0 +
+                  during_studies_abroad_studies +
+                  during_studies_abroad_work +
+                  during_studies_abroad_langcourse +
+                  during_studies_abroad_summerschool +
+                  workimportance_subj +
+                  apprent_unpaid * inheritance+
+                  apprent_paid * inheritance+
+                  intern_unpaid * inheritance+
+                  intern_paid * inheritance +
+                  eduyrs + bornincntry +
+                  mental_health_subj, data = df, Hess = TRUE)
+
+#summary(model_cat)
+coefs = summary(model_cat)$coefficients
+
+p_values = 2 * pnorm(abs(coefs[, "t value"]), lower.tail = FALSE)
+
+coefs_withp = cbind(exp(coefs[,1]), p_value = p_values, "<0.01" = p_values < 0.01, "<0.05" = p_values < 0.05)
+
+additional_country = exp(-1* sum(coefficients(model_cat)[1:10]))
+coefs_withp = rbind(coefs_withp[1:10, ], cntry11 = c(additional_country, NA,NA,NA), coefs_withp[11:nrow(coefs_withp), ])
+rownames(coefs_withp)[1:11]  = paste0("cntry", levels(df$cntry))
+coefs_withp = coefs_withp[1:32,]
+
+# pretty table output
+table_out <- as.data.frame(coefs_withp) %>%
+  mutate(
+    Variable = rownames(coefs_withp),
+    OR = round(V1, 3),
+    p_value = signif(p_value, 3),
+    Significance = case_when(
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ ""
+    )
+  ) %>%
+  dplyr::select(Variable, OR, p_value, Significance)
+colnames(table_out)[3] = "P-Value"
+
+table_out$Variable <- recode(table_out$Variable,
+  "yrbrn0" = "Birth year",
+  "eduyrs" = "Years of education",
+  "bornincntry1" = "Born in country",
+  "workimportance_subj" = "Importance of work",
+  
+  # Country
+  "cntryAT" = "Austria",
+  "cntryBE" = "Belgium",
+  "cntryCZ" = "Czechia",
+  "cntryFI" = "Finland",
+  "cntryFR" = "France",
+  "cntryGB" = "United Kingdom",
+  "cntryHU" = "Hungary",
+  "cntryIS" = "Iceland",
+  "cntryPL" = "Poland",
+  "cntryPT" = "Portugal",
+  "cntrySI" = "Slovenia",
+
+  # Mental health
+  "mental_health_subj2" = "Mental health: good",
+  "mental_health_subj3" = "Mental health: fair",
+  "mental_health_subj4" = "Mental health: bad",
+  "mental_health_subj5" = "Mental health: very bad",
+
+  # During studies
+  "during_studies_abroad_studies1" = "Studied abroad",
+  "during_studies_abroad_work1" = "Work/internship abroad",
+  "during_studies_abroad_langcourse1" = "Language course abroad",
+  "during_studies_abroad_summerschool1" = "Summer school/workshop abroad",
+
+  # Work experience
+  "apprent_unpaid1" = "Unpaid apprenticeship",
+  "apprent_paid1" = "Paid apprenticeship",
+  "intern_unpaid1" = "Unpaid internship",
+  "intern_paid1" = "Paid internship",
+
+  # Socioeconomic background
+  "inheritance1" = "Expects inheritance",
+
+  # Interactions
+  "apprent_unpaid1:inheritance1" = "Unpaid apprenticeship × inheritance",
+  "inheritance1:apprent_paid1" = "Paid apprenticeship × inheritance",
+  "inheritance1:intern_unpaid1" = "Unpaid internship × inheritance",
+  "inheritance1:intern_paid1" = "Paid internship × inheritance"
+)
+rownames(table_out) = NULL
+
+# variable groups and order
+table_out <- table_out %>%
+  mutate(
+    group = case_when(
+      Variable %in% c("Austria","Belgium","Czechia","Finland","France",
+                      "United Kingdom","Hungary","Iceland","Poland","Portugal","Slovenia") ~ "Countries",
+      
+      Variable %in% c("Birth year","Born in country") ~ "Demographics",
+      
+      grepl("abroad|education|Importance of work", Variable) ~ "Education and studies",
+      
+      grepl("apprent|intern", Variable) & !grepl("×", Variable) ~ "Work experience",
+      
+      grepl("Mental health", Variable) ~ "Mental health",
+      
+      Variable == "Expects inheritance" ~ "Socioeconomic background",
+      
+      grepl("×", Variable) ~ "Interactions",
+      
+      TRUE ~ "Other"
+    )
+  ) %>%
+  mutate(
+    group = factor(group, levels = c(
+      "Countries",
+      "Demographics",
+      "Education and studies",
+      "Work experience",
+      "Mental health",
+      "Socioeconomic background",
+      "Interactions"
+    ))
+  ) %>%
+  arrange(group)
+
+# headers
+add_header <- function(group_name) {
+  data.frame(
+    Variable = group_name,
+    OR = NA,
+    p_value = NA,
+    Significance = "",
+    stringsAsFactors = FALSE
+  )
+}
+
+table_final <- bind_rows(
+  add_header("Countries"),
+  filter(table_out, group == "Countries"),
+  
+  add_header("Demographics"),
+  filter(table_out, group == "Demographics"),
+  
+  add_header("Education and studies"),
+  filter(table_out, group == "Education and studies"),
+  
+  add_header("Work experience"),
+  filter(table_out, group == "Work experience"),
+  
+  add_header("Mental health"),
+  filter(table_out, group == "Mental health"),
+  
+  add_header("Socioeconomic background"),
+  filter(table_out, group == "Socioeconomic background"),
+  
+  add_header("Interactions"),
+  filter(table_out, group == "Interactions")
+)
+table_final_clean <- table_final %>%
+  mutate(
+    `P-Value` = formatC(`P-Value`, format = "f", digits = 4)
+  ) %>%
+  dplyr::select(Variable, OR, `P-Value`, Significance)
+options(knitr.kable.NA = '')
+
+kable(table_final_clean,
+      col.names = c("Variable", "OR", "P-Value", "Significance"),
+      caption = "Determinants of Time to First Job (Odds Ratios)",
+      booktabs = TRUE,
+      align = "lccc") %>%
+  kable_styling(full_width = FALSE) %>%
+  add_indent(which(!is.na(table_final_clean$OR)))
+  # kable_styling(full_width = FALSE, position = "center") %>%
+  # row_spec(which(table_out$`P-Value` < 0.05), bold = TRUE)
+
+```
+*Note: Odds ratios above 1 indicate a higher likelihood of longer job-search duration, while values below 1 indicate faster entry into employment. Significance levels: \*\* p $<$ 0.01, \* p $<$ 0.05.*
+
+# Interpretation of Results
+The outcome variable measures the time until obtaining the first job, where higher categories indicate a longer transition into employment. 
+\begin{itemize}
+\item An odds ratio greater than 1 indicates a higher likelihood of experiencing longer job-search durations.
+\item An odds ratio less than 1 indicates a higher likelihood of faster entry into employment.
+\item Statistical significance is evaluated at the 5% and 1% levels.
+\end{itemize}
+
+## Country
+The results show **substantial cross-country variation** in the transition from education to employment.\newline
+
+Several countries exhibit significantly **faster transitions**:
+\begin{itemize}
+\item Austria (OR $=$ 0.77, p $<$ 0.01)
+\item Finland (OR $=$ 0.75, p $<$ 0.01)
+\item Iceland (OR $=$ 0.32, p $<$ 0.01)
+\end{itemize}
+In particular, Iceland stands out with a very strong effect, indicating that individuals there are much less likely to experience prolonged job search periods.\newline
+\newline
+In contrast, some countries show significantly **slower transitions**:
+\begin{itemize}
+\item France (OR $=$ 1.82, p $<$ 0.01)
+\item Portugal (OR $=$ 1.90, p $<$ 0.01)
+\item Poland (OR $=$ 1.43, p $<$ 0.01)
+\end{itemize}
+This suggests that structural differences between national labour markets play an important role in shaping early career trajectories.
+
+Other countries (e.g., Belgium, Czech Republic, United Kingdom, Hungary) do not show statistically significant differences. \newline
+The differences between the different countries also become very apparent when looking at the following plot.
+
+```{r plot1, echo=FALSE}
+round(prop.table(table(df$timetojob_fac, df$cntry), margin = 2), 2)
+tab = prop.table(table(df$timetojob_fac, df$cntry), margin = 2)
+
+df_plot = as.data.frame(tab)
+names(df_plot) = c("response", "country", "prop")
+
+df_plot$country <- factor(df_plot$country,
+  levels = c("AT","BE","CZ","FI","FR","GB","HU","IS","PL","PT","SI"),
+  labels = c("Austria","Belgium","Czechia","Finland","France",
+             "United Kingdom","Hungary","Iceland","Poland","Portugal","Slovenia")
+)
+ggplot(df_plot, aes(x = country, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country",
+       y = "Proportion",
+       fill = "Response category") +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+## Education and study-related experiences
+The results indicate that different types of experiences during studies have **varying effects**:
+\begin{itemize}
+\item Working abroad during studies is associated with faster job entry (OR $=$ 0.79, p $<$ 0.05).
+\item Attending a language course abroad is associated with slower transitions (OR $=$ 1.42, p $<$ 0.01).
+\item Studying abroad and summer schools show no significant effects.
+\end{itemize}
+These findings suggest that practical work experience **abroad may be more valuable** for labour market integration than purely academic or short-term activities.
+
+```{r plot2, echo=FALSE}
+edu_vars <- c(
+  "during_studies_abroad_studies",
+  "during_studies_abroad_work",
+  "during_studies_abroad_langcourse",
+  "during_studies_abroad_summerschool",
+  "timetojob"
+)
+
+df_edu_plot <- df %>%
+  dplyr::select(all_of(edu_vars)) %>%
+  pivot_longer(cols = everything(),
+               names_to = "experience",
+               values_to = "response")
+
+df_edu_plot$experience <- factor(df_edu_plot$experience,
+  levels = edu_vars,
+  labels = c("Studied abroad",
+             "Work/internship abroad",
+             "Language course abroad",
+             "Summer school/workshop abroad")
+)
+
+df_edu_plot <- df_edu_plot %>%
+  group_by(experience, response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(experience) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(df_edu_plot, aes(x = experience, y = prop, fill = factor(response))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Education and study-related experiences",
+       y = "Proportion",
+       fill = "Response category") +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+## Apprenticeships and internships
+
+Work experience plays an important but nuanced role:
+\begin{itemize}
+\item Paid apprenticeships (OR $=$ 0.77, p $<$ 0.01) and unpaid apprenticeships (OR $=$ 0.77, p $<$ 0.01) are both associated with faster transitions into employment.
+\item Paid internships show a weak, non-significant tendency toward faster entry (OR $=$ 0.86).
+\item Unpaid internships show no significant effect.
+\end{itemize}
+
+This indicates that **apprenticeships are particularly effective** in facilitating labour market entry, while internships appear less consistently beneficial.
+```{r plot3, echo=FALSE}
+```
+
+## Socioeconomic background
+
+The expectation of receiving an **inheritance does not show a significant** direct effect (OR $=$ 1.02). The interaction terms between inheritance and work experience are also not statistically significant. This suggests that the effects of apprenticeships and internships on job entry do not differ substantially depending on expected inheritance. \newline
+
+However, another important factor is:
+\begin{itemize}
+\item Being born in the country is associated with substantially faster job entry (OR $=$ 0.56, p $<$ 0.01).
+\end{itemize}
+This suggests that structural advantages, such as familiarity with the local labour market or fewer barriers, play a key role. This implies that, people **not born in the country**, such as immigrants, have **more difficulty entering the labour market quickly**.
+```{r plot4, echo=FALSE}
+
+```
+## Mental health
+
+Mental health shows one of the **strongest and most consistent patterns** in the model. \newline
+
+Compared to individuals with very good mental health:
+
+\begin{itemize}
+\item Moderate difficulties (OR $\approx$ 1.39–1.64) are associated with longer job search durations
+\item Severe difficulties (OR $=$ 3.08, p $<$ 0.01) are associated with substantially longer transitions
+\end{itemize}
+
+This indicates a clear gradient effect, where **worsening mental health** is strongly linked to **increasing difficulty in entering employment**.
+```{r plot5, echo=FALSE}
+```
+## Other individual characteristics
+\begin{itemize}
+\item Age (year of birth): Younger individuals tend to experience slightly longer transitions (OR $=$ 1.02, p $<$ 0.01), indicating that the job search has become more difficult throughout time.
+\item Years of education: More education is associated with a slightly longer transition (OR $=$ 1.02, p $<$ 0.01), possibly reflecting longer job search for better matches.
+\item Importance of work: No significant effect.
+\end{itemize}
+
+```{r plot6, echo=FALSE}
+```
+# Policy Implications and Recommandations
+
+This analysis shows that the transition from education to employment is shaped not only by individual choices, but by structural factors such as labour market institutions, access to work experience, and mental health.
+
+## 1. Labour market structures matter
+There are large differences between countries in how quickly young people find jobs. \newline
+$\rightarrow$ Learn from high-performing systems (e.g. Iceland) and adapt best practices at the national level.
+
+## 2. Mental health is a key barrier
+Poor mental health is strongly associated with delayed entry into employment. \newline
+$\rightarrow$ Integrate mental health support into education and employment policies, especially during the transition phase.
+
+## 3. Apprenticeships are highly effective
+Structured work experience, especially apprenticeships, significantly improves early employment outcomes, while internships are less consistent. \newline
+$\rightarrow$ Expand and strengthen apprenticeship systems and improve the quality and regulation of internships.
+
+## 4. Inequalities affect opportunities
+Being born in the country significantly improves employment chances, indicating structural barriers for some groups. \newline
+$\rightarrow$ Provide targeted support for disadvantaged youth, including migrants and those with fewer resources.
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
