@@ -1,0 +1,39 @@
+---
+title: 'Education to Work Transition: What Really Helps Young People Get Their First
+  Job'
+author: "Elisa Noltenius"
+date: "2026-04-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\textcolor{gray}{Detailed report starting on next page}
+
+# "Poor mental health can more than triple the risk of longer job search durations."
+
+> Compared to those with very good mental health, people reporting very poor mental health have over three times higher odds of being in longer time-to-job categories.
+
+\textbf{$\Rightarrow$ Integrate mental health support into education and employment services.}
+
+# "Where you live strongly shapes how fast you find a job."
+
+> Young people in countries like Austria, Finland, and especially Iceland enter employment much more quickly, while those in France, Portugal, and Poland have up to 80% higher risk to have longer job search periods.
+
+\textbf{$\Rightarrow$ Identify and scale successful labour market policies from high-performing countries and adapt own line of action.}
+
+# "Being born abroad significantly slows down the transition into employment."
+
+> Young people born in the country are about 44% more likely to find a job quickly, suggesting that migrants face substantial structural barriers when entering the labour market.
+
+\textbf{$\Rightarrow$ Strengthen targeted support for young migrants, including recognition of qualifications and access to networks.}
+
+# "Apprenticeships significantly speed up job entry."
+
+> Apprenticeships reduce the risk of prolonged job search by about 23%, highlighting the importance of early work experience.
+
+\textbf{$\Rightarrow$ Expand access to apprenticeship programmes and strengthen links between education systems and employers.}
+
+![](by.png)

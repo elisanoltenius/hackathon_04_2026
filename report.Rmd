@@ -1,14 +1,18 @@
 ---
-title: 'Education to Work Transition: What Really Helps Young People Get Their First
-  Job?'
-author: "Elisa Noltenius"
-date: "2026-04-22"
+title: ''
+author: ""
+date: ""
 output:
   pdf_document:
     toc: true
     toc_depth: 1
     number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
+
+\setcounter{page}{2}
 
 ```{r setup, include=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -19,32 +23,47 @@ library(knitr)
 library(kableExtra)
 library(scales)
 library(tidyr)
+library(RColorBrewer)
 ```
 
 # Problem Description and Research Question
 
-\textbf{Target audience}: Government and policy makers working on youth employment \newline
+\textbf{Target audience}: Government and policy makers working on youth
+employment \newline
 
-Why do some young people find a job quickly after completing their education, while others take months or even years to enter the labour market? \newline
+Why do some young people find a job quickly after completing their
+education, while others take months or even years to enter the labour
+market? \newline
 
-A faster transition into employment is not only beneficial for individuals, but also for society as a whole. Early labour market integration means:
+A faster transition into employment is not only beneficial for
+individuals, but also for society as a whole. Early labour market
+integration means:
+
 \begin{itemize}
 \item quicker economic contribution
 \item higher productivity and value creation
 \item reduced risk of long-term unemployment
 \end{itemize}
-However, these transitions are not equally distributed. Differences may arise from individual characteristics, access to work experience, mental health, or broader structural conditions such as national labour market systems.
+
+However, these transitions are not equally distributed. Differences may
+arise from individual characteristics, access to work experience, mental
+health, or broader structural conditions such as national labour market
+systems.
 
 \textbf{Research question:}
 
-> What factors determine how quickly young people enter the labour market after completing their education?
+> What factors determine how quickly young people enter the labour
+> market after completing their education?
 
-To answer this question, an ordinal regression model was estimated using data from the CRONOS-3 survey, focusing on the duration of active job search until the first employment.
+To answer this question, an ordinal regression model was estimated using
+data from the CRONOS-3 survey, focusing on the duration of active job
+search until the first employment.
 
 # Model
 
-Outcome: Time to first job after active search (\textit{w3sq69b}) \newline
-Input:
+Outcome: Time to first job after active search (\textit{w3sq69b})
+\newline Input:
+
 \begin{itemize}
 \item Birth year (\textit{yrbrn})
 \item Country (\textit{cntry})
@@ -52,7 +71,7 @@ Input:
 \item Strong Pillar:
 \begin{itemize}
 \item Years of full-time education completed (\textit{eduyrs})
-\item Respondent born in country $\rightarrow$ indicator for migration backround (\textit{w2sq18a})
+\item Respondent born in country $\rightarrow$ indicator for migration background (\textit{w2sq18a})
 \item Importance of work in life (\textit{w4sq1}: 1$=$Essential, 2$=$Very important, 3$=$Fairly important, 4$=$Not very important, 5$=$Not important at all)
 \item Done during studies (\textit{w1sq6\_1} - \textit{w1sq6\_4}: 1$=$Yes, 0$=$No):
 \begin{itemize}
@@ -79,6 +98,8 @@ Input:
 \end{itemize}
 \end{itemize}
 
+For the fitting of the model, all uninformative categories and missing
+values were omitted.
 
 ```{r dataprep, include=FALSE, message=FALSE}
 # Data ----
@@ -198,7 +219,9 @@ summary(df[, c("during_studies_abroad_studies", "during_studies_abroad_work",
                "mental_health_subj")])
 
 ```
+
 Odds ratio per variable for an ordinal logistic regression model:
+
 ```{r modelfitting, echo=FALSE, message=FALSE}
 # contrasts(df$cntry) = contr.treatment(nlevels(df$cntry)) # --> austria is reference category
 # df$cntry = relevel(df$cntry, ref = "FR")  # France is reference category
@@ -365,7 +388,7 @@ table_final <- bind_rows(
 )
 table_final_clean <- table_final %>%
   mutate(
-    `P-Value` = formatC(`P-Value`, format = "f", digits = 4)
+    `P-Value` = round(`P-Value`, digits = 4)
   ) %>%
   dplyr::select(Variable, OR, `P-Value`, Significance)
 options(knitr.kable.NA = '')
@@ -381,10 +404,16 @@ kable(table_final_clean,
   # row_spec(which(table_out$`P-Value` < 0.05), bold = TRUE)
 
 ```
-*Note: Odds ratios above 1 indicate a higher likelihood of longer job-search duration, while values below 1 indicate faster entry into employment. Significance levels: \*\* p $<$ 0.01, \* p $<$ 0.05.*
+
+*Note: Odds ratios above 1 indicate a higher likelihood of longer
+job-search duration, while values below 1 indicate faster entry into
+employment. Significance levels: \*\* p* $<$ 0.01, \* p $<$ 0.05.
 
 # Interpretation of Results
-The outcome variable measures the time until obtaining the first job, where higher categories indicate a longer transition into employment. 
+
+The outcome variable measures the time until obtaining the first job,
+where higher categories indicate a longer transition into employment.
+
 \begin{itemize}
 \item An odds ratio greater than 1 indicates a higher likelihood of experiencing longer job-search durations.
 \item An odds ratio less than 1 indicates a higher likelihood of faster entry into employment.
@@ -392,28 +421,39 @@ The outcome variable measures the time until obtaining the first job, where high
 \end{itemize}
 
 ## Country
-The results show **substantial cross-country variation** in the transition from education to employment.\newline
+
+The results show **substantial cross-country variation** in the
+transition from education to employment.\newline
 
 Several countries exhibit significantly **faster transitions**:
+
 \begin{itemize}
 \item Austria (OR $=$ 0.77, p $<$ 0.01)
 \item Finland (OR $=$ 0.75, p $<$ 0.01)
 \item Iceland (OR $=$ 0.32, p $<$ 0.01)
 \end{itemize}
-In particular, Iceland stands out with a very strong effect, indicating that individuals there are much less likely to experience prolonged job search periods.\newline
-\newline
-In contrast, some countries show significantly **slower transitions**:
+
+In particular, Iceland stands out with a very strong effect, indicating
+that individuals there are much less likely to experience prolonged job
+search periods.\newline \newline In contrast, some countries show
+significantly **slower transitions**:
+
 \begin{itemize}
 \item France (OR $=$ 1.82, p $<$ 0.01)
 \item Portugal (OR $=$ 1.90, p $<$ 0.01)
 \item Poland (OR $=$ 1.43, p $<$ 0.01)
 \end{itemize}
-This suggests that structural differences between national labour markets play an important role in shaping early career trajectories.
 
-Other countries (e.g., Belgium, Czech Republic, United Kingdom, Hungary) do not show statistically significant differences. \newline
-The differences between the different countries also become very apparent when looking at the following plot.
+This suggests that structural differences between national labour
+markets play an important role in shaping early career trajectories.
+
+Other countries (e.g., Belgium, Czech Republic, United Kingdom, Hungary)
+do not show statistically significant differences. \newline The
+differences between the different countries also become very apparent
+when looking at the following plot.
 
 ```{r plot1, echo=FALSE, message=FALSE}
+cols <- brewer.pal(5, "Blues")[2:5]
 tab = prop.table(table(df$timetojob_fac, df$cntry), margin = 2)
 
 df_plot = as.data.frame(tab)
@@ -432,18 +472,26 @@ ggplot(df_plot, aes(x = country, y = prop, fill = factor(response))) +
   scale_y_continuous(labels = percent) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(family = "serif")
+  ) +
+  scale_fill_manual(values = cols)
 ```
 
 ## Education and study-related experiences
-The results indicate that different types of experiences during studies have **varying effects**:
+
+The results indicate that different types of experiences during studies
+have **varying effects**:
+
 \begin{itemize}
 \item Working abroad during studies is associated with faster job entry (OR $=$ 0.79, p $<$ 0.05).
 \item Attending a language course abroad is associated with slower transitions (OR $=$ 1.42, p $<$ 0.01).
 \item Studying abroad and summer schools show no significant effects.
 \end{itemize}
-These findings suggest that practical work experience **abroad may be more valuable** for labour market integration than purely academic or short-term activities.
+
+These findings suggest that practical work experience **abroad may be
+more valuable** for labour market integration than purely academic or
+short-term activities.
 
 ```{r plot2, echo=FALSE, message=FALSE}
 edu_vars <- c(
@@ -500,22 +548,25 @@ ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
   scale_y_continuous(labels = percent) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(family = "serif")
+  ) +
+  scale_fill_manual(values = cols)
 ```
-
 
 ## Apprenticeships and internships
 
 Work experience plays an important but nuanced role:
+
 \begin{itemize}
 \item Paid apprenticeships (OR $=$ 0.77, p $<$ 0.01) and unpaid apprenticeships (OR $=$ 0.77, p $<$ 0.01) are both associated with faster transitions into employment.
 \item Paid internships show a weak, non-significant tendency toward faster entry (OR $=$ 0.86).
 \item Unpaid internships show no significant effect.
 \end{itemize}
 
-This indicates that **apprenticeships are particularly effective** in facilitating labour market entry, while internships appear less consistently beneficial.
-
+This indicates that **apprenticeships are particularly effective** in
+facilitating labour market entry, while internships appear less
+consistently beneficial.
 
 ```{r plot3, echo=FALSE, message=FALSE}
 edu_vars <- c(
@@ -573,21 +624,31 @@ ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
   scale_y_continuous(labels = percent) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(family = "serif")
+  ) +
+  scale_fill_manual(values = cols)
 ```
-
 
 ## Socioeconomic background
 
-The expectation of receiving an **inheritance does not show a significant** direct effect (OR $=$ 1.02). The interaction terms between inheritance and work experience are also not statistically significant. This suggests that the effects of apprenticeships and internships on job entry do not differ substantially depending on expected inheritance. \newline
+The expectation of receiving an **inheritance does not show a
+significant** direct effect (OR $=$ 1.02). The interaction terms between
+inheritance and work experience are also not statistically significant.
+This suggests that the effects of apprenticeships and internships on job
+entry do not differ substantially depending on expected inheritance.
+\newline
 
 However, another important factor is:
+
 \begin{itemize}
 \item Being born in the country is associated with substantially faster job entry (OR $=$ 0.56, p $<$ 0.01).
 \end{itemize}
-This suggests that structural advantages, such as familiarity with the local labour market or fewer barriers, play a key role. This implies that, people **not born in the country**, such as immigrants, have **more difficulty entering the labour market quickly**.
 
+This suggests that structural advantages, such as familiarity with the
+local labour market or fewer barriers, play a key role. This implies
+that, people **not born in the country**, such as immigrants, have
+**more difficulty entering the labour market quickly**.
 
 ```{r plot4, echo=FALSE, message=FALSE}
 edu_vars <- c(
@@ -613,22 +674,26 @@ ggplot(df_plot, aes(x = bornincntry, y = prop, fill = factor(response))) +
        y = "Proportion",
        fill = "Time to First Job") +
   scale_y_continuous(labels = percent) +
-  theme_minimal() 
+  theme_minimal() + theme(text = element_text(family = "serif")) +
+  scale_fill_manual(values = cols)
 ```
 
 ## Mental health
 
-Mental health shows one of the **strongest and most consistent patterns** in the model. \newline
+Mental health shows one of the **strongest and most consistent
+patterns** in the model. \newline
 
-Compared to individuals with very good mental health:
+Compared to individuals with very good mental health (which serves as
+reference category):
 
 \begin{itemize}
 \item Moderate difficulties (OR $\approx$ 1.39–1.64) are associated with longer job search durations
 \item Severe difficulties (OR $=$ 3.08, p $<$ 0.01) are associated with substantially longer transitions
 \end{itemize}
 
-This indicates a clear gradient effect, where **worsening mental health** is strongly linked to **increasing difficulty in entering employment**.
-
+This indicates a clear gradient effect, where **worsening mental
+health** is strongly linked to **increasing difficulty in entering
+employment**.
 
 ```{r plot5, echo=FALSE, message=FALSE}
 edu_vars <- c(
@@ -651,20 +716,29 @@ df_plot$experience <- factor(df_plot$mental,
              "Bad",
              "Very bad")
 )
-ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
-  geom_bar(stat = "identity") +
+# ggplot(df_plot, aes(x = experience, y = prop, fill = factor(response))) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Mental Health",
+#        y = "Proportion",
+#        fill = "Time to First Job") +
+#   scale_y_continuous(labels = percent) +
+#   theme_minimal() + theme(text = element_text(family = "serif")) +
+#   scale_fill_manual(values = cols)
+ggplot(df_plot, aes(x=as.numeric(as.character(mental)), y=prop, fill=response)) +
+  geom_area() +
   labs(x = "Mental Health",
        y = "Proportion",
-       fill = "Time to First Job") +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+       fill = "Time to First Job") +   
+  scale_x_continuous(
+    breaks = 1:5,
+    labels = c("Very good", "Good", "Fair", "Bad", "Very bad")
+  ) +
+  theme_minimal() + theme(text = element_text(family = "serif")) +
+  scale_fill_manual(values = cols)
 ```
 
-
 ## Other individual characteristics
+
 \begin{itemize}
 \item Age (year of birth): Younger individuals tend to experience slightly longer transitions (OR $=$ 1.02, p $<$ 0.01), indicating that the job search has become more difficult throughout time.
 \item Years of education: More education is associated with a slightly longer transition (OR $=$ 1.02, p $<$ 0.01), possibly reflecting longer job search for better matches.
@@ -684,7 +758,9 @@ ggplot(df_plot, aes(x = age_group, y = prop, fill = factor(response))) +
   geom_bar(stat = "identity") +
   scale_y_continuous(labels = scales::percent) +
   labs(x = "Age group", y = "Proportion", fill = "Response") +
-  theme_minimal()
+  theme_minimal() +
+  theme(text = element_text(family = "serif")) +
+  scale_fill_manual(values = cols)
 
 df_plot = df %>%
   group_by(age, timetojob_fac) %>%
@@ -694,29 +770,42 @@ df_plot = df %>%
 
 ggplot(df_plot, aes(x = age, y = prop, color = timetojob_fac)) +
   labs(x = "Age", y = "Proportion", color = "Response") +
-  theme_minimal() + geom_smooth(se = FALSE) # + geom_line()
-
+  geom_smooth(se = FALSE) +
+  theme_minimal() +
+  theme(text = element_text(family = "serif")) +
+  scale_color_manual(values = cols) 
 ```
 
 # Policy Implications and Recommandations
 
-This analysis shows that the transition from education to employment is shaped not only by individual choices, but by structural factors such as labour market institutions, access to work experience, and mental health.
+This analysis shows that the transition from education to employment is
+shaped not only by individual choices, but by structural factors such as
+labour market institutions, access to work experience, and mental
+health.
 
-## 1. Labour market structures matter
-There are large differences between countries in how quickly young people find jobs. \newline
-$\rightarrow$ Learn from high-performing systems (e.g. Iceland) and adapt best practices at the national level.
+## Mental health is a key barrier {.unnumbered}
 
-## 2. Mental health is a key barrier
-Poor mental health is strongly associated with delayed entry into employment. \newline
-$\rightarrow$ Integrate mental health support into education and employment policies, especially during the transition phase.
+Poor mental health is strongly associated with delayed entry into
+employment. \newline $\rightarrow$ Integrate mental health support into
+education and employment policies, especially during the transition
+phase.
 
-## 3. Apprenticeships are highly effective
-Structured work experience, especially apprenticeships, significantly improves early employment outcomes, while internships are less consistent. \newline
-$\rightarrow$ Expand and strengthen apprenticeship systems and improve the quality and regulation of internships.
+## Labour market structures matter {.unnumbered}
 
-## 4. Inequalities affect opportunities
-Being born in the country significantly improves employment chances, indicating structural barriers for some groups. \newline
-$\rightarrow$ Provide targeted support for disadvantaged youth, including migrants and those with fewer resources.
+There are large differences between countries in how quickly young
+people find jobs. \newline $\rightarrow$ Learn from high-performing
+systems (e.g. Iceland) and adapt best practices at the national level.
 
+## Inequalities affect opportunities {.unnumbered}
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Being born in the country significantly improves employment chances,
+indicating structural barriers for some groups. \newline $\rightarrow$
+Provide targeted support for disadvantaged youth, including migrants and
+those with fewer resources.
+
+## Apprenticeships are highly effective {.unnumbered}
+
+Structured work experience, especially apprenticeships, significantly
+improves early employment outcomes, while internships are less
+consistent. \newline $\rightarrow$ Expand and strengthen apprenticeship
+systems and improve the quality and regulation of internships.
